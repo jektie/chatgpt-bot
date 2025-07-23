@@ -83,8 +83,10 @@ ${excelText}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 `;
 
-  const completion = await openai.createChatCompletion({
-    model: 'gpt-4',
+  const response = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: 'gpt-4',
       messages: [
         {
           role: 'system',
