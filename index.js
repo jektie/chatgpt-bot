@@ -47,7 +47,7 @@ app.post('/webhook/line', async (req, res) => {
         'https://api.line.me/v2/bot/message/reply',
         {
           replyToken,
-          messages: [{ type: 'text', text: reply }]
+          messages: messages // ใช้ตัวแปร messages ที่ประกาศไว้ด้านบน
         },
         {
           headers: {
