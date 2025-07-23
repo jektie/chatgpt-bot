@@ -4,13 +4,8 @@ const { loadExcelData } = require('./loadExcelData');
 const axios = require('axios');
 require('dotenv').config();
 console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
-const { Configuration, OpenAIApi } = require("openai");
-
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const openai = new OpenAIApi(configuration);
+const OpenAI = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 
 const app = express();
@@ -90,7 +85,7 @@ ${excelText}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 `;
 
-  const completion = await openai.createChatCompletion({
+  const completion = await openai.chat.completions.create({
     model: "gpt-4",
     messages: [{ role: "user", content: prompt }],
   });
