@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { loadExcelData } = require('./loadExcelData');
+const keywordImageMap = require('./keywordImageMap');
 const axios = require('axios');
 require('dotenv').config();
 console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
@@ -24,11 +25,29 @@ app.post('/webhook/line', async (req, res) => {
 
       const reply = await askChatGPTWithExcel(userMessage);
 
+      let messages = [];
+
+      if (reply.type === 'image') {
+        messages = [
+          {
+            type: 'image',
+            originalContentUrl: reply.imageUrl,
+            previewImageUrl: reply.imageUrl
+          },
+          {
+            type: 'text',
+            text: reply.caption
+          }
+        ];
+      } else {
+        messages = [{ type: 'text', text: reply.text }];
+      }
+
       await axios.post(
         'https://api.line.me/v2/bot/message/reply',
         {
           replyToken,
-          messages: [{ type: 'text', text: reply }]
+          messages
         },
         {
           headers: {
@@ -51,13 +70,43 @@ app.post('/webhook/facebook', async (req, res) => {
 
   const reply = await askChatGPTWithExcel(userMessage);
 
-  await axios.post(
-    `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
-    {
-      recipient: { id: senderId },
-      message: { text: reply }
-    }
-  );
+  if (reply.type === 'image') {
+    // ส่งรูป
+    await axios.post(
+      `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
+      {
+        recipient: { id: senderId },
+        message: {
+          attachment: {
+            type: "image",
+            payload: {
+              url: reply.imageUrl,
+              is_reusable: true
+            }
+          }
+        }
+      }
+    );
+
+    // ส่ง caption ตามหลัง
+    await axios.post(
+      `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
+      {
+        recipient: { id: senderId },
+        message: { text: reply.caption }
+      }
+    );
+  } else {
+    // ตอบข้อความธรรมดา
+    await axios.post(
+      `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
+      {
+        recipient: { id: senderId },
+        message: { text: reply.text }
+      }
+    );
+  }
+
   res.sendStatus(200);
 });
 
@@ -77,6 +126,14 @@ app.get("/webhook/facebook", (req, res) => {
 
 // ChatGPT function
 async function askChatGPTWithExcel(userMessage) {
+  // 1. ตรวจสอบ keyword ว่าตรงกับภาพใดไหม
+  for (const item of keywordImageMap) {
+    if (item.keywords.some(keyword => userMessage.toLowerCase().includes(keyword.toLowerCase()))) {
+      return { type: 'image', imageUrl: item.imageUrl, caption: item.caption };
+    }
+  }
+
+  // 2. ถ้าไม่ตรง keyword ใดเลย ให้ถาม GPT แทน
   const excelText = loadExcelData();
 
   const prompt = `
@@ -84,6 +141,13 @@ async function askChatGPTWithExcel(userMessage) {
 นี่คือข้อมูลทั้งหมดของร้าน:
 ${excelText}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
+
+**รูปแบบการตอบ:**
+- ให้ตอบสั้น กระชับ ชัดเจน
+- ตอบแค่ที่ลูกค้าถาม ถ้ามีข้อมูลเพิ่มเติมค่อยส่งให้ในข้อความถัดไป
+- เว้นบรรทัดเป็นระยะ เพื่อให้อ่านง่าย
+- ใช้สัญลักษณ์ bullet point (•) เมื่อจำเป็น
+- ไม่แต่งเติมข้อมูลที่ไม่มีอยู่ในข้อมูลนี้เด็ดขาด
 `;
 
   try {
