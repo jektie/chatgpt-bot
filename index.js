@@ -30,13 +30,9 @@ app.post('/webhook/line', async (req, res) => {
       const userMessage = event.message.text;
       const replyToken = event.replyToken;
 
-      // 🔍 ลองหาคำตอบจาก Excel ก่อน
-      let reply = findAnswerFromExcel(userMessage);
-
-      // ถ้าไม่มีคำตอบใน Excel ค่อยถาม GPT
-      if (!reply) {
-        reply = await askChatGPT(userMessage);
-      }
+      // ลองหาจาก Excel ก่อน
+      const excelAnswer = findAnswerFromExcel(userMessage);
+      const reply = excelAnswer || await askChatGPT(userMessage);
 
       await axios.post(
         'https://api.line.me/v2/bot/message/reply',
