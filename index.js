@@ -4,6 +4,13 @@ const { loadExcelData } = require('./loadExcelData');
 const axios = require('axios');
 require('dotenv').config();
 console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
+const { Configuration, OpenAIApi } = require("openai");
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
 
 
 const app = express();
