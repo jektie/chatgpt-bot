@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const excelData = require('./dataLoader');
 const axios = require('axios');
 require('dotenv').config();
 console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
@@ -8,6 +9,16 @@ console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
 const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
+
+function findAnswerFromExcel(message) {
+  for (let row of excelData) {
+    if (message.includes(row.คำถาม)) {
+      return row.คำตอบ;
+    }
+  }
+  return null;
+}
+
 
 const PORT = process.env.PORT || 3000;
 
@@ -19,7 +30,13 @@ app.post('/webhook/line', async (req, res) => {
       const userMessage = event.message.text;
       const replyToken = event.replyToken;
 
-      const reply = await askChatGPT(userMessage);
+      // 🔍 ลองหาคำตอบจาก Excel ก่อน
+      let reply = findAnswerFromExcel(userMessage);
+
+      // ถ้าไม่มีคำตอบใน Excel ค่อยถาม GPT
+      if (!reply) {
+        reply = await askChatGPT(userMessage);
+      }
 
       await axios.post(
         'https://api.line.me/v2/bot/message/reply',
@@ -46,7 +63,13 @@ app.post('/webhook/facebook', async (req, res) => {
   const senderId = messaging.sender.id;
   const userMessage = messaging.message.text;
 
-  const reply = await askChatGPT(userMessage);
+  // ลองตอบจาก Excel ก่อน
+        let reply = findAnswerFromExcel(userMessage);
+
+        // ถ้าไม่เจอคำตอบใน Excel ค่อยไปถาม ChatGPT
+        if (!reply) {
+          reply = await askChatGPT(userMessage);
+        }
 
   await axios.post(
     `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
