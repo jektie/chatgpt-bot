@@ -22,3 +22,7 @@ function findAnswerFromExcel(message) {
 }
 
 module.exports = { findAnswerFromExcel };
+
+const data = loadExcelData();
+console.log(Array.isArray(data)); // ต้องเป็น true
+console.log(data);

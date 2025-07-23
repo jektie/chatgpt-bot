@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const excelData = require('./dataLoader');
-const { findAnswerFromExcel } = require('./dataLoader');
+const { loadExcelData } = require('./loadExcelData');
 const axios = require('axios');
 require('dotenv').config();
 console.log('FB VERIFY TOKEN:', process.env.FB_VERIFY_TOKEN);
@@ -83,34 +82,23 @@ app.get("/webhook/facebook", (req, res) => {
 });
 
 // ChatGPT function
-async function askChatGPT(message) {
-  try {
-    const res = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'คุณคือพนักงานร้านอาหารแหนมเนือง กรุณาตอบคำถามลูกค้าด้วยข้อมูลจริงและสุภาพ'
-          },
-          { role: 'user', content: message }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    return res.data.choices[0].message.content;
-  } catch (err) {
-    console.error(err.response?.data || err.message);
-    return 'ขออภัย ระบบขัดข้องชั่วคราว';
-  }
+async function askChatGPTWithExcel(userMessage) {
+  const excelText = loadExcelData();
+  const prompt = `
+ผู้ใช้ถามว่า: "${userMessage}"
+นี่คือข้อมูลทั้งหมดของร้าน:
+${excelText}
+กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
+`;
+
+  const completion = await openai.createChatCompletion({
+    model: "gpt-4",
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  return completion.data.choices[0].message.content;
 }
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
