@@ -83,29 +83,10 @@ ${excelText}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 `;
 
-  const response = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'คุณคือตัวช่วยตอบคำถามจากข้อมูลที่ให้อย่างแม่นยำที่สุด ตอบด้วยความสุภาพ ลงท้ายด้วยครับเสมอ',
-        },
-        {
-          role: 'user',
-          content: `ข้อมูลทั้งหมด:\n${context}\n\nคำถาม: ${message}`,
-        },
-      ],
-      temperature: 0.3,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  const completion = await openai.createChatCompletion({
+    model: "gpt-4",
+    messages: [{ role: "user", content: prompt }],
+  });
 
   return completion.data.choices[0].message.content;
 }
