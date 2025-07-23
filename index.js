@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const excelData = require('./dataLoader');
 const { findAnswerFromExcel } = require('./dataLoader');
 const axios = require('axios');
 require('dotenv').config();

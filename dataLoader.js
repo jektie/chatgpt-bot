@@ -14,8 +14,8 @@ function loadExcelData() {
 function findAnswerFromExcel(message) {
   const data = loadExcelData();
   for (let row of data) {
-    if (message.includes(row.question)) {
-      return row.answer;
+    if (message.includes(row.คำถาม)) {
+      return row.คำตอบ;
     }
   }
   return null;
