@@ -20,9 +20,7 @@ app.post('/webhook/line', async (req, res) => {
       const userMessage = event.message.text;
       const replyToken = event.replyToken;
 
-      // ลองหาจาก Excel ก่อน
-      const excelAnswer = findAnswerFromExcel(userMessage);
-      const reply = excelAnswer || await askChatGPT(userMessage);
+      const reply = await askChatGPTWithExcel(userMessage);
 
       await axios.post(
         'https://api.line.me/v2/bot/message/reply',
@@ -49,13 +47,7 @@ app.post('/webhook/facebook', async (req, res) => {
   const senderId = messaging.sender.id;
   const userMessage = messaging.message.text;
 
-  // ลองตอบจาก Excel ก่อน
-        let reply = findAnswerFromExcel(userMessage);
-
-        // ถ้าไม่เจอคำตอบใน Excel ค่อยไปถาม ChatGPT
-        if (!reply) {
-          reply = await askChatGPT(userMessage);
-        }
+  const reply = await askChatGPTWithExcel(userMessage);
 
   await axios.post(
     `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
@@ -92,9 +84,26 @@ ${excelText}
 `;
 
   const completion = await openai.createChatCompletion({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-  });
+    model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'คุณคือตัวช่วยตอบคำถามจากข้อมูลที่ให้อย่างแม่นยำที่สุด ตอบด้วยความสุภาพ ลงท้ายด้วยครับเสมอ',
+        },
+        {
+          role: 'user',
+          content: `ข้อมูลทั้งหมด:\n${context}\n\nคำถาม: ${message}`,
+        },
+      ],
+      temperature: 0.3,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   return completion.data.choices[0].message.content;
 }
