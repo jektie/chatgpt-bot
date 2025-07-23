@@ -78,6 +78,7 @@ app.get("/webhook/facebook", (req, res) => {
 // ChatGPT function
 async function askChatGPTWithExcel(userMessage) {
   const excelText = loadExcelData();
+
   const prompt = `
 ผู้ใช้ถามว่า: "${userMessage}"
 นี่คือข้อมูลทั้งหมดของร้าน:
@@ -85,13 +86,30 @@ ${excelText}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 `;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-  });
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+    });
 
-  return completion.data.choices[0].message.content;
+    if (
+      completion &&
+      completion.choices &&
+      completion.choices.length > 0 &&
+      completion.choices[0].message &&
+      completion.choices[0].message.content
+    ) {
+      return completion.choices[0].message.content.trim();
+    } else {
+      console.error("❌ ไม่พบข้อความตอบกลับจาก ChatGPT:", completion);
+      return "ขออภัย ฉันไม่สามารถตอบคำถามได้ในตอนนี้";
+    }
+  } catch (error) {
+    console.error("❌ เกิดข้อผิดพลาดในการเรียก OpenAI:", error);
+    return "เกิดข้อผิดพลาดจากระบบ AI";
+  }
 }
+
 
 
 app.listen(PORT, () => {
