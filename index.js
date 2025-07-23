@@ -11,16 +11,6 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
 
-function findAnswerFromExcel(message) {
-  for (let row of excelData) {
-    if (message.includes(row.คำถาม)) {
-      return row.คำตอบ;
-    }
-  }
-  return null;
-}
-
-
 const PORT = process.env.PORT || 3000;
 
 // LINE Webhook
