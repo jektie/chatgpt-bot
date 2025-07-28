@@ -163,7 +163,7 @@ ${excelText}
       completion.choices[0].message &&
       completion.choices[0].message.content
     ) {
-      return completion.choices[0].message.content.trim();
+      return { type: 'text', text: completion.choices[0].message.content.trim() };
     } else {
       console.error("❌ ไม่พบข้อความตอบกลับจาก ChatGPT:", completion);
       return "ขออภัย ฉันไม่สามารถตอบคำถามได้ในตอนนี้";
