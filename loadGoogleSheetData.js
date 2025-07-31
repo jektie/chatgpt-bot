@@ -9,24 +9,33 @@ async function loadGoogleSheetData() {
   );
 
   const sheets = google.sheets({ version: 'v4', auth });
-
   const sheetId = process.env.GOOGLE_SHEET_ID;
-  const range = 'ข้อมูลร้าน!A1:Z'; // ปรับตามชื่อ sheet
 
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
-  const rows = response.data.values;
+  // Helper function แปลง range ให้เป็น object array
+  async function loadSheet(rangeName) {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${rangeName}!A1:Z`,
+    });
 
-  if (!rows || rows.length === 0) return "ไม่มีข้อมูล";
+    const rows = response.data.values;
+    if (!rows || rows.length < 2) return [];
 
-  // แปลงให้เป็นข้อความสำหรับ prompt
-  const headers = rows[0];
-  const dataRows = rows.slice(1);
+    const headers = rows[0];
+    return rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        obj[h.trim()] = row[i] || '';
+      });
+      return obj;
+    });
+  }
 
-  let result = dataRows.map(row => {
-    return headers.map((h, i) => `${h.trim()}: ${row[i] || ''}`).join('\n');
-  }).join('\n\n');
+  const shopInfo = await loadSheet('ข้อมูลร้าน');
+  const menuData = await loadSheet('เมนูและราคา');
+  const dailyStatus = await loadSheet('สถานะประจำวัน');
 
-  return result;
+  return { shopInfo, menuData, dailyStatus };
 }
 
 module.exports = { loadGoogleSheetData };

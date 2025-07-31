@@ -134,12 +134,20 @@ async function askChatGPTWithSheet(userMessage) {
   }
 
   // 2. ถ้าไม่ตรง keyword ใดเลย ให้ถาม GPT แทน
-  const googleSheetsData = await loadGoogleSheetData();
+  const { shopInfo, menuData, dailyStatus } = await loadGoogleSheetData();
 
   const prompt = `
 ผู้ใช้ถามว่า: "${userMessage}"
-ข้อมูลร้านทั้งหมด:
+
+ข้อมูลร้าน:
 ${JSON.stringify(shopInfo, null, 2)}
+
+เมนูและราคา:
+${JSON.stringify(menuData, null, 2)}
+
+สถานะร้านวันนี้:
+${JSON.stringify(dailyStatus, null, 2)}
+
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 
 **รูปแบบการตอบ:**
