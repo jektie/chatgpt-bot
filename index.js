@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { loadExcelData } = require('./loadExcelData');
+const { loadGoogleSheetData } = require('./loadGoogleSheetData');
 const keywordImageMap = require('./keywordImageMap');
 const axios = require('axios');
 require('dotenv').config();
@@ -23,7 +23,7 @@ app.post('/webhook/line', async (req, res) => {
       const userMessage = event.message.text;
       const replyToken = event.replyToken;
 
-      const reply = await askChatGPTWithExcel(userMessage);
+      const reply = await askChatGPTWithSheet(userMessage);
 
       let messages = [];
 
@@ -68,7 +68,7 @@ app.post('/webhook/facebook', async (req, res) => {
   const senderId = messaging.sender.id;
   const userMessage = messaging.message.text;
 
-  const reply = await askChatGPTWithExcel(userMessage);
+  const reply = await askChatGPTWithSheet(userMessage);
 
   if (reply.type === 'image') {
     // ส่งรูป
@@ -125,7 +125,7 @@ app.get("/webhook/facebook", (req, res) => {
 });
 
 // ChatGPT function
-async function askChatGPTWithExcel(userMessage) {
+async function askChatGPTWithSheet(userMessage) {
   // 1. ตรวจสอบ keyword ว่าตรงกับภาพใดไหม
   for (const item of keywordImageMap) {
     if (item.keywords.some(keyword => userMessage.toLowerCase().includes(keyword.toLowerCase()))) {
@@ -134,12 +134,12 @@ async function askChatGPTWithExcel(userMessage) {
   }
 
   // 2. ถ้าไม่ตรง keyword ใดเลย ให้ถาม GPT แทน
-  const excelText = loadExcelData();
+  const googleSheetsData = await loadGoogleSheetData();
 
   const prompt = `
 ผู้ใช้ถามว่า: "${userMessage}"
-นี่คือข้อมูลทั้งหมดของร้าน:
-${excelText}
+ข้อมูลร้านทั้งหมด:
+${JSON.stringify(shopInfo, null, 2)}
 กรุณาตอบคำถามของผู้ใช้โดยอิงจากข้อมูลนี้เท่านั้น
 
 **รูปแบบการตอบ:**
