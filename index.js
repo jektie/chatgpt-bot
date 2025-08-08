@@ -134,7 +134,7 @@ async function askChatGPTWithSheet(userMessage) {
   }
 
   // 2. ถ้าไม่ตรง keyword ใดเลย ให้ถาม GPT แทน
-  const { shopInfo, menuData, dailyStatus } = await loadGoogleSheetData();
+  const { shopInfo, menuData, dailyStatus } = await loadGoogleSheetData({forceDailyStatus: true});
 
   const prompt = `
 ผู้ใช้ถามว่า: "${userMessage}"

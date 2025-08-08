@@ -11,7 +11,17 @@ if (!SPREADSHEET_ID || !SERVICE_ACCOUNT_KEY_STRING) {
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly'];
 
-// ฟังก์ชันสำหรับตรวจสอบสิทธิ์ (จากโค้ดที่คุณต้องการ)
+let cache = {
+  shopInfo: null,
+  menuData: null,
+  dailyStatus: null,
+  lastUpdated: {
+    shopInfo: null,
+    menuData: null,
+    dailyStatus: null,
+  }
+};
+
 async function authorize() {
   let credentials;
   try {
@@ -31,36 +41,57 @@ async function authorize() {
   return jwtClient;
 }
 
-// ฟังก์ชันหลักสำหรับดึงข้อมูล (จากโค้ดแรกของคุณ)
-async function loadGoogleSheetData() {
-  const auth = await authorize(); // ใช้ฟังก์ชัน authorize() ที่เราสร้างขึ้น
+// ฟังก์ชันดึงข้อมูลจากชีตเดียว
+async function loadSheet(auth, sheetName) {
   const sheets = google.sheets({ version: 'v4', auth });
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A1:Z`,
+  });
 
-  // Helper function แปลง range ให้เป็น object array
-  async function loadSheet(rangeName) {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID, // ใช้ SPREADSHEET_ID จาก .env
-      range: `${rangeName}!A1:Z`,
+  const rows = response.data.values;
+  if (!rows || rows.length < 2) return [];
+
+  const headers = rows[0];
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h.trim()] = row[i] || '';
     });
+    return obj;
+  });
+}
 
-    const rows = response.data.values;
-    if (!rows || rows.length < 2) return [];
+// ฟังก์ชันหลัก
+async function loadGoogleSheetData(options = {}) {
+  const { forceDailyStatus = false, forceAll = false } = options;
+  const auth = await authorize();
 
-    const headers = rows[0];
-    return rows.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        obj[h.trim()] = row[i] || '';
-      });
-      return obj;
-    });
+  // โหลด shopInfo และ menuData แค่วันละ 1 ครั้ง
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+
+  if (!cache.shopInfo || cache.lastUpdated.shopInfo !== today || forceAll) {
+    cache.shopInfo = await loadSheet(auth, 'ข้อมูลร้าน');
+    cache.lastUpdated.shopInfo = today;
   }
 
-  const shopInfo = await loadSheet('ข้อมูลร้าน');
-  const menuData = await loadSheet('เมนูและราคา');
-  const dailyStatus = await loadSheet('สถานะประจำวัน');
+  if (!cache.menuData || cache.lastUpdated.menuData !== today || forceAll) {
+    cache.menuData = await loadSheet(auth, 'เมนูและราคา');
+    cache.lastUpdated.menuData = today;
+  }
 
-  return { shopInfo, menuData, dailyStatus };
+  // ส่วนนี้จะโหลดทุกครั้ง ถ้า forceDailyStatus = true หรือยังไม่เคยโหลด
+  if (!cache.dailyStatus || forceDailyStatus || cache.lastUpdated.dailyStatus !== today) {
+    cache.dailyStatus = await loadSheet(auth, 'สถานะประจำวัน');
+    cache.lastUpdated.dailyStatus = today;
+  }
+
+  return {
+    shopInfo: cache.shopInfo,
+    menuData: cache.menuData,
+    dailyStatus: cache.dailyStatus,
+  };
 }
 
 module.exports = { loadGoogleSheetData };
@@ -69,7 +100,7 @@ module.exports = { loadGoogleSheetData };
 if (require.main === module) {
   (async () => {
     try {
-      const data = await loadGoogleSheetData();
+      const data = await loadGoogleSheetData({ forceDailyStatus: true });
       console.log('Sheet ID:', SPREADSHEET_ID);
       console.dir(data, { depth: null });
     } catch (error) {
