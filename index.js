@@ -126,17 +126,57 @@ app.get("/webhook/facebook", (req, res) => {
 
 // ChatGPT function
 async function askChatGPTWithSheet(userMessage) {
-  // 1. ตรวจสอบ keyword ว่าตรงกับภาพใดไหม
-  for (const item of keywordImageMap) {
-    if (item.keywords.some(keyword => userMessage.toLowerCase().includes(keyword.toLowerCase()))) {
-      return { type: 'image', imageUrl: item.imageUrl, caption: item.caption };
+  const lowerMsg = userMessage.toLowerCase();
+
+  // ------------------------------
+  // กลุ่มคำที่ต้องการขอรูปปกติ
+  const requestImageKeywords = ["ขอรูป", "ขอดูรูป", "ขอภาพ"];
+
+  // กลุ่มคำพิเศษสำหรับขอ QR / โอนเงิน (ไม่ต้องมี "ขอรูป")
+  const paymentKeywords = ["ขอเลขที่บัญชี", "ขอเลขโอนเงิน", "ขอบัญชี", "โอนยังไง"];
+
+  const hasImageRequest = requestImageKeywords.some(req =>
+    lowerMsg.includes(req)
+  );
+
+  const hasPaymentRequest = paymentKeywords.some(req =>
+    lowerMsg.includes(req)
+  );
+
+  // ------------------------------
+  // ถ้าเป็นเงื่อนไขปกติ
+  if (hasImageRequest) {
+    for (const item of keywordImageMap) {
+      if (item.keywords.some(keyword => lowerMsg.includes(keyword.toLowerCase()))) {
+        return {
+          type: 'image',
+          imageUrl: item.imageUrl,
+          caption: `นี่คือ${item.caption}ค่ะ ลูกค้า`
+        };
+      }
     }
   }
 
-  // 2. ถ้าไม่ตรง keyword ใดเลย ให้ถาม GPT แทน
-  const { shopInfo, menuData, dailyStatus } = await loadGoogleSheetData({forceDailyStatus: true});
+  // ------------------------------
+  // ถ้าเป็นเงื่อนไขพิเศษ (QR โอนเงิน)
+  if (hasPaymentRequest) {
+    for (const item of keywordImageMap) {
+      if (item.keywords.includes("qr")) { // กำหนด keyword สำหรับ QR ใน keywordImageMap เช่น "qr"
+        return {
+          type: 'image',
+          imageUrl: item.imageUrl,
+          caption: `นี่คือ${item.caption}ค่ะ ลูกค้า`
+        };
+      }
+    }
+  }
+
+  // ------------------------------
+  // ถ้าไม่เข้าเงื่อนไขรูป → ตอบด้วย GPT
+  const { shopInfo, menuData, dailyStatus } = await loadGoogleSheetData();
 
   const prompt = `
+คุณเป็นผู้หญิง ให้เรียกลูกค้าว่า "ลูกค้า" เสมอ  
 ผู้ใช้ถามว่า: "${userMessage}"
 
 ข้อมูลร้าน:
@@ -160,7 +200,7 @@ ${JSON.stringify(dailyStatus, null, 2)}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
     });
 
