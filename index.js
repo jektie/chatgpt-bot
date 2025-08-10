@@ -130,7 +130,7 @@ async function askChatGPTWithSheet(userMessage) {
 
   // ------------------------------
   // กลุ่มคำที่ต้องการขอรูปปกติ
-  const requestImageKeywords = ["ขอรูป", "ขอดูรูป", "ขอภาพ"];
+  const requestImageKeywords = ["ขอรูป", "ขอดูรูป", "ขอภาพ", "ขอดู"];
 
   // กลุ่มคำพิเศษสำหรับขอ QR / โอนเงิน (ไม่ต้องมี "ขอรูป")
   const paymentKeywords = ["ขอเลขที่บัญชี", "ขอเลขโอนเงิน", "ขอบัญชี", "โอนยังไง"];
